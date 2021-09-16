@@ -1,0 +1,56 @@
+---
+title: "Spotify Analysis"
+output: github_document
+---
+
+## This is an analysis of my Spotify streaming history from 9/14/2020 - 9/14/2021
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r imports}
+library(jsonlite)
+library(tidyverse)
+library(ggthemes)
+```
+
+## Spotify delivers its data in the form of JSON, and it was split into 2 files in my case.
+
+```{r read json}
+json1 <- jsonlite::read_json('~/code/data/spotify/StreamingHistory0.json', simplifyDataFrame = TRUE)
+json2 <- jsonlite::read_json('~/code/data/spotify/StreamingHistory1.json', simplifyDataFrame = TRUE)
+```
+
+```{r make tibbles}
+df1 <- tibble(json1)
+df2 <- tibble(json2)
+```
+
+## We join all history into one tibble and arrange by end time of each song.
+```{r join}
+total_df <- full_join(df1,df2) %>% arrange(.,desc(endTime), by_group=TRUE)
+```
+
+## Graph top 10 artist by song play count
+```{r graph top artists}
+top_artists <- total_df %>% count(artistName, sort = TRUE) %>% arrange(.,desc(n), by_group=TRUE) %>% top_n(10)
+ggplot(top_artists, aes(x = reorder(artistName,(-n)), y = n)) +   geom_bar(stat = 'identity') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab("Artist Name") + ylab("Number of plays")
+```
+
+## Graph top 10 songs played
+```{r graph top 10 songs}
+top_tracks <- total_df %>% count(trackName, sort = TRUE) %>% arrange(.,desc(n), by_group=TRUE) %>% top_n(10)
+ggplot(top_tracks, aes(x = reorder(trackName,(-n)), y = n)) +   geom_bar(stat = 'identity') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab("Track Name") + ylab("Number of plays")
+```
+
+## Graph top 10 songs by time played
+```{r top songs time}
+top_time_songs <- total_df %>% group_by(trackName) %>% summarise(time_played = (sum(msPlayed)/1000)/60) %>% arrange(desc(time_played, by_group = TRUE)) %>% top_n(9)
+top_time_songs %>% ggplot(aes(x = reorder(trackName,(-time_played)), y = time_played)) +   geom_bar(stat = 'identity') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab("Track Name") + ylab("Time Played (minutes)")
+```
+
+## Graph top 10 artists by time played
+```{r top artists time}
+top_time_artists <- total_df %>% group_by(artistName) %>% summarise(time_played = (sum(msPlayed)/1000)/60) %>% arrange(desc(time_played, by_group = TRUE)) %>% top_n(9)
+top_time_artists %>% ggplot(aes(x = reorder(artistName,(-time_played)), y = time_played)) +   geom_bar(stat = 'identity') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + xlab("Artist Name") + ylab("Time Played (minutes)")
+```
